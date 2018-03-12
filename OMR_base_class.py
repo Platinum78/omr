@@ -3,20 +3,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-class OMR_Sheet:
-    def __init__(self, img_path=None, vertical_markers=20, horizontal_markers=18):
-        if img_path is not None:
-            self.img = cv2.imread(img_path,0)
+class OMR_Scanner:
+    def __init__(self, sol_path=None, vertical_markers=20, horizontal_markers=18):
+        if sol_path is not None:
+            self.img = cv2.imread(sol_path,0)
             self.pheight, self.pwidth = self.img.shape[0], self.img.shape[1]
             self.marker_cnt = 2 * (vertical_markers+horizontal_markers)
+
+    def set_base_path(self, path):
+        self.BASE_PATH = path
+        if self.BASE_PATH[-1] != '/':
+            self.BASE_PATH += '/'
 
     def load_sheet(self, img_path, vertical_markers=20, horizontal_markers=18):
         self.img = cv2.imread(img_path,0)
         self.pheight, self.pwidth = self.img.shape[0], self.img.shape[1]
         self.marker_cnt = 2 * (vertical_markers+horizontal_markers)
 
-    def find_markers(self, min_area, max_area):
-        self.ret, self.thresh = cv2.threshold(self.img, 190, 255, 0)
+    def find_markers(self, min_area, max_area, threshold=190):
+        self.ret, self.thresh = cv2.threshold(self.img, threshold, 255, 0)
         self.img2, self.contours, self.hierarchy = cv2.findContours(self.thresh, 1, 2)
         self.rect_centers = []
 
@@ -24,13 +29,23 @@ class OMR_Sheet:
             contour = np.array(self.contours[idx])[:,0,:]
             area = cv2.contourArea(contour)
             if area > 800 and area < 1000:
-                self.rect_centers.append(np.ndarray.tolist(np.average(contour, axis=0)))
+                rect_center = np.average(contour, axis=0)
+                if rect_center[1] < 0.15*self.pheight or rect_center[1] > 0.8*self.pheight or rect_center[0] < 0.15*self.pwidth or rect_center[0] > 0.85*self.pwidth:
+                    self.rect_centers.append(rect_center)
 
         if len(self.rect_centers) != self.marker_cnt:
             self.is_correct = 'False'
         else:
             self.is_correct = ' True'
         self.rect_centers = np.array(self.rect_centers)
+        print(len(self.rect_centers))
+
+    def show_sheet(self):
+        fig = plt.figure(figsize=[21,29.7], dpi=150)
+        plt.imshow(self.img2)
+        rect_centers = np.array(self.rect_centers)
+        plt.scatter(rect_centers[:,0], rect_centers[:,1])
+        return fig
 
     def sort_points(self):
         center_list = np.ndarray.tolist(self.rect_centers)
