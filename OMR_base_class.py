@@ -7,6 +7,7 @@ class OMR_Scanner:
     def __init__(self, sol_path=None, vertical_markers=20, horizontal_markers=18):
         if sol_path is not None:
             self.img = cv2.imread(sol_path,0)
+            print(type(self.img))
             self.pheight, self.pwidth = self.img.shape[0], self.img.shape[1]
             self.marker_cnt = 2 * (vertical_markers+horizontal_markers)
 
@@ -28,7 +29,7 @@ class OMR_Scanner:
         for idx in range(len(self.contours)):
             contour = np.array(self.contours[idx])[:,0,:]
             area = cv2.contourArea(contour)
-            if area > 800 and area < 1000:
+            if area > min_area and area < max_area:
                 rect_center = np.average(contour, axis=0)
                 if rect_center[1] < 0.15*self.pheight or rect_center[1] > 0.8*self.pheight or rect_center[0] < 0.15*self.pwidth or rect_center[0] > 0.85*self.pwidth:
                     self.rect_centers.append(rect_center)
@@ -44,7 +45,7 @@ class OMR_Scanner:
         fig = plt.figure(figsize=[21,29.7], dpi=150)
         plt.imshow(self.img2)
         rect_centers = np.array(self.rect_centers)
-        plt.scatter(rect_centers[:,0], rect_centers[:,1])
+        plt.scatter(rect_centers[:,0], rect_centers[:,1], color='white')
         return fig
 
     def sort_points(self):
@@ -141,7 +142,7 @@ class OMR_Scanner:
                 self.lattice_points = np.int32(self.lattice_points)
         return self.lattice_points
 
-    def read_response(self, threshold=200, answersheet=False, radius=10):
+    def read_response(self, problem_cnt, threshold=200, answersheet=False, radius=10):
         # read id, first
         if answersheet == False:
             id_string = ""
@@ -155,7 +156,7 @@ class OMR_Scanner:
         # read the responses
         answer = []
         answers = []
-        for y in range(20):
+        for y in range(min(problem_cnt,20)):
             answer = []
             for x in range(10, 14):
                 if self.examine_mark(centerpoint=[self.lattice_points[y,x,0], self.lattice_points[y,x,1]],
